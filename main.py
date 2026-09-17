@@ -1,0 +1,1 @@
+from rb_client.app import app
