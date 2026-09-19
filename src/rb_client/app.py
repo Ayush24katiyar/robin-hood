@@ -81,7 +81,7 @@ async def chat(payload: ModelInput) -> ModelOutput:
             {"role": "system", "content": payload.system or "You are a helpful assistant."},
             {"role": "user", "content": payload.prompt},
         ],
-        "temperature": payload.temperature or 0.7,
+        "temperature": payload.temperature if payload.temperature is not None else 0.7,
     }
     return ModelOutput(response=await call_openrouter(body, mode="chat"))
 

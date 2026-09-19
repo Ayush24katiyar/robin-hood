@@ -26,6 +26,12 @@ client = [
     "pynput>=1.8.2",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "mypy>=2.3.1",
+]
+
 [tool.mypy]
 [[tool.mypy.overrides]]
 module = ["pynput.*"]

@@ -8,6 +8,18 @@ MAX_IMAGE_BYTES = 15 * 1024 * 1024
 MAX_IMAGE_SIDE = 2000
 ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/bmp", "image/gif"}
 
+WHITE_BACKGROUND = (255, 255, 255, 255)
+
+
+def to_rgb(image: Image.Image) -> Image.Image:
+    if image.mode == "RGB":
+        return image
+    if image.mode in {"RGBA", "LA", "PA"} or "transparency" in image.info:
+        rgba = image.convert("RGBA")
+        background = Image.new("RGBA", rgba.size, WHITE_BACKGROUND)
+        return Image.alpha_composite(background, rgba).convert("RGB")
+    return image.convert("RGB")
+
 
 async def read_image(file: UploadFile) -> bytes:
     if file.content_type not in ALLOWED_IMAGE_TYPES:
@@ -23,8 +35,10 @@ async def read_image(file: UploadFile) -> bytes:
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Uploaded file is not a valid image.") from exc
 
+    rgb_image = to_rgb(image)
+
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
+    rgb_image.save(buffer, format="PNG")
     return buffer.getvalue()
 
 
