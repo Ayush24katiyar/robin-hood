@@ -3,6 +3,52 @@
 This file tracks every functional change, so devs know what changed, why, and how it was verified.
 Format: newest entry on top. Each entry lists files, behavior, tests, and next step.
 
+## 2026-09-19 — True transparent overlay (no glass, floating text only)
+
+### Why (your table)
+- Native `transparent:true/frame:false/backgroundColor #00000000` was already correct;
+  all white came from renderer CSS (`.rb-window` 0.94 + blur, chrome 0.88, body 0.75,
+  footer 0.9, Ghost/Glass/Solid modes, `.rb-desktop` gradient). S/M/L + VIEW/MOVE +
+  capture logic untouched.
+
+### Changed
+- `client/src/styles.css`: `.rb-window/.rb-chrome/.rb-body/.rb-footer` → transparent,
+  no blur/borders/shadow; `.rb-specular` hidden (white band); `.rb-desktop` → transparent
+  (no fake gradient); removed all `rb-opacity-*` blocks; added `rb-answer-text/title`
+  (white + heavy black shadow, reads over VS Code white and dark code). Small controls
+  (buttons/pills/logo/kbd/status) keep chip backgrounds — only large surfaces cleared.
+- `client/src/components/RBAssistantWindow.tsx`: removed `opacity` state, `cycleOpacity()`,
+  `rb-opacity-*` class, Ghost/Glass/Solid emoji button (also kills emoji footprint);
+  title + answer/error use `rb-answer-title/text`; root keeps `rb-interactive` glow only.
+- Untouched per table: `electron/main.cjs`, `preload.cjs`, `capture.cjs`,
+  `DragSelector.tsx`, `router.tsx`, `routeTree.gen.ts`.
+
+### Verified (mocked, zero quota)
+- `tsc` clean; `lint` clean; `vitest` 7 passed; `build` ok; `node --check` 4 ok;
+  `node --test` 5 passed; `pytest` 35 passed.
+
+### You verify (1 live optional within your 5)
+- Overlay over VS Code: no white rectangle, lecture/code visible behind, floating
+  header + answer text readable via shadow. VIEW/MOVE + capture unchanged.
+- NOTE: `localhost:8080` shows browser default behind (transparent body); true
+  see-through desktop only renders in `electron:dev` shell.
+
+## 2026-09-19 — Dark-layer fix: transparent html/body/#root (your research)
+
+### Why
+- After large surfaces went transparent, a dark rectangle remained: `body` still painted
+  `var(--color-background)` (dark oklch) full-viewport over the transparent native window.
+
+### Changed
+- `client/src/styles.css`: `html, body, #root → transparent !important` (body keeps
+  color/font, drops bg); `!important` on all transparent surfaces + `-webkit-backdrop-filter`
+  safety prefixes.
+- `client/src/components/RBAssistantWindow.tsx`: deleted `rb-specular` div (CSS hide
+  was equivalent; deletion is cleaner).
+
+### Verified (mocked, zero quota)
+- `tsc` clean; `lint` clean; `vitest` 7 passed; `build` ok; `pytest` 35 passed.
+
 ## 2026-09-19 — Audit fix: pixel-cap guard in read_image (/analyze path)
 
 ### Why

@@ -37,8 +37,6 @@ export function RBAssistantWindow() {
   const [dragMode, setDragMode] = useState(false); // Electron Ctrl+Shift+Space selector
   const [inElectron, setInElectron] = useState(false);
   const [interactive, setInteractive] = useState(false); // MOVE clickable vs VIEW click-through
-  // Opacity: Ghost default (see lecture behind) → Glass → Solid readable.
-  const [opacity, setOpacity] = useState<"ghost" | "glass" | "solid">("ghost");
   const abortRef = useRef<AbortController | null>(null);
   const lastCaptureRef = useRef(0);
   const timersRef = useRef<number[]>([]);
@@ -194,10 +192,6 @@ export function RBAssistantWindow() {
     [applyPreset, syncNativeSize],
   );
 
-  const cycleOpacity = useCallback(() => {
-    setOpacity((o) => (o === "ghost" ? "glass" : o === "glass" ? "solid" : "ghost"));
-  }, []);
-
   // Free drag-resize from bottom-right grip + native window sync (fixes footer cut).
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -245,9 +239,8 @@ export function RBAssistantWindow() {
 
   return (
     <div
-      data-opacity={opacity}
       data-interactive={interactive}
-      className={`rb-window rb-opacity-${opacity} relative z-20 flex w-full select-none flex-col overflow-hidden rounded-2xl ${
+      className={`rb-window relative z-20 flex w-full flex-col overflow-hidden rounded-2xl ${
         animate ? "rb-window-animate" : ""
       } ${interactive ? "rb-interactive" : ""}`}
       style={{
@@ -258,8 +251,6 @@ export function RBAssistantWindow() {
         minHeight: 340,
       }}
     >
-      <div className="rb-specular pointer-events-none absolute inset-x-0 top-0 h-28" />
-
       <header
         className="rb-chrome flex shrink-0 items-center justify-between gap-2 px-4 py-3 sm:px-5"
         // Native drag handle ONLY in MOVE mode (VIEW stays click-through for lecture).
@@ -312,15 +303,6 @@ export function RBAssistantWindow() {
             style={{ ["WebkitAppRegion" as string]: "no-drag" } as CSSProperties}
           >
             {interactive ? "MOVE" : "VIEW"}
-          </button>
-          <button
-            type="button"
-            title="Cycle transparency: Ghost → Glass → Solid"
-            onClick={cycleOpacity}
-            className="rounded-full px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-            style={{ ["WebkitAppRegion" as string]: "no-drag" } as CSSProperties}
-          >
-            {opacity === "ghost" ? "👻" : opacity === "glass" ? "🪟" : "⬛"}
           </button>
 
           <div
@@ -405,15 +387,17 @@ export function RBAssistantWindow() {
       >
         <div className="space-y-2">
           <h1
-            className={`font-bold tracking-tight text-foreground ${titleSize}`}
+            className={`rb-answer-title font-bold tracking-tight ${titleSize}`}
             style={{ letterSpacing: "-0.015em" }}
           >
             {capturing ? "Analyzing screen…" : status === "error" ? "Capture failed" : "Answer"}
           </h1>
           {status === "error" ? (
-            <p className="text-[13.5px] leading-relaxed text-destructive">{errorMsg}</p>
+            <p className="rb-answer-text text-[13.5px] leading-relaxed">{errorMsg}</p>
           ) : (
-            <p className="text-[13.5px] leading-relaxed whitespace-pre-wrap text-body">{answer}</p>
+            <p className="rb-answer-text text-[13.5px] leading-relaxed whitespace-pre-wrap">
+              {answer}
+            </p>
           )}
         </div>
       </main>
