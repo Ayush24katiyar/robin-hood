@@ -137,3 +137,48 @@ def test_load_image_keeps_small_images() -> None:
     result = _open_png(base64.b64decode(encoded))
     assert result.size == (640, 480)
     assert result.getpixel((0, 0)) == (10, 20, 30)
+
+
+def test_encode_rejects_decompression_bomb_dimensions(monkeypatch) -> None:
+    """50MP+ dimensions rejected before to_rgb allocates (mocked size, no big alloc)."""
+    from rb_client import images as images_module
+
+    class FakeImage:
+        width = 10000
+        height = 10000
+        mode = "RGB"
+        info: dict = {}
+
+        def load(self) -> None:
+            return None
+
+    monkeypatch.setattr(Image, "open", lambda *_a, **_k: FakeImage())
+    with pytest.raises(HTTPException) as exc:
+        images_module.encode_png_bytes_to_data_url(b"fake")
+    assert exc.value.status_code == 400
+    assert "pixels" in str(exc.value.detail)
+
+
+def test_read_image_rejects_decompression_bomb_dimensions(monkeypatch) -> None:
+    """Same 50MP+ guard must fire in read_image (the /analyze path).
+
+    Regression: the guard previously lived only in encode_png_bytes_to_data_url,
+    so load_image -> read_image allocated the full RGB buffer via to_rgb before
+    encode ever ran. Mocked size, no big alloc, no network.
+    """
+    from rb_client import images as images_module
+
+    class FakeImage:
+        width = 10000
+        height = 10000
+        mode = "RGB"
+        info: dict = {}
+
+        def load(self) -> None:
+            return None
+
+    monkeypatch.setattr(Image, "open", lambda *_a, **_k: FakeImage())
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(images_module.read_image(_upload(b"fake", "image/png")))
+    assert exc.value.status_code == 400
+    assert "pixels" in str(exc.value.detail)

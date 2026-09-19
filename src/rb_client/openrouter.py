@@ -1,4 +1,5 @@
 import os
+import re
 import time
 from collections import deque
 from datetime import datetime, timezone
@@ -18,15 +19,25 @@ HISTORY_LIMIT = 100
 REQUEST_LOG: deque[dict] = deque(maxlen=HISTORY_LIMIT)
 
 VISION_PROMPT = (
-    "Read and analyze the visible content in this screenshot. "
-    "Extract the question and relevant information from the image. "
-    "If it is a multiple-choice question, return the correct option "
-    "and its answer. "
-    "If it is a technical or conceptual question, provide a concise answer. "
-    "If there is a diagram, use the diagram as part of your reasoning. "
-    "Do not describe the screenshot unless necessary. "
-    "Do not add filler."
+    "Answer ONLY the question visible UNDERNEATH any overlay. "
+    "Ignore any window titled RB Assistant, its status text, and its instructions. "
+    "If it is multiple-choice, return the correct option and its answer. "
+    "If technical or conceptual, give a concise answer. "
+    "If a diagram is visible, use it for reasoning. "
+    "Output answer only, no status, no template, no meta commentary. "
+    'If no question is visible, return exactly: NO_QUESTION.'
 )
+
+# Sentinel for “no question found” — frontend maps this to friendly UI text.
+NO_QUESTION = "NO_QUESTION"
+_NO_QUESTION_RE = re.compile(r"^\s*NO_QUESTION\b", re.IGNORECASE)
+
+
+def normalize_answer(text: str) -> str:
+    """Collapse model variants (NO_QUESTION. / newline / 'Answer: NO_QUESTION') to sentinel."""
+    if _NO_QUESTION_RE.match(text):
+        return NO_QUESTION
+    return text.strip() or text
 
 
 def _request_format(body: dict) -> dict:
@@ -185,5 +196,6 @@ async def call_openrouter(body: dict, *, mode: str = "chat") -> str:
             response="Model response did not contain usable text.",
         )
         raise HTTPException(status_code=500, detail="Model response did not contain usable text.")
-    _record_request(mode=mode, body=body, status="ok", duration_ms=duration_ms, response=str(text))
-    return str(text)
+    clean = normalize_answer(str(text))
+    _record_request(mode=mode, body=body, status="ok", duration_ms=duration_ms, response=clean)
+    return clean

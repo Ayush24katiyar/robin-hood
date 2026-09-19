@@ -122,6 +122,30 @@
   backdrop-filter: blur(16px);
 }
 
+/* Opacity modes: Ghost default (see lecture behind) → Glass → Solid readable.
+ * Window itself is transparent:true; these alphas decide how much video shows through.
+ * Class sits ON .rb-window, so children need .rb-window.rb-opacity-* prefix. */
+.rb-window.rb-opacity-ghost {
+  background: oklch(1 0 0 / 0.55);
+}
+.rb-window.rb-opacity-ghost .rb-chrome {
+  background: oklch(1 0 0 / 0.6);
+}
+.rb-window.rb-opacity-ghost .rb-body {
+  background: oklch(1 0 0 / 0.45);
+}
+.rb-window.rb-opacity-ghost .rb-footer {
+  background: oklch(1 0 0 / 0.6);
+}
+.rb-window.rb-opacity-glass .rb-body {
+  background: oklch(1 0 0 / 0.65);
+}
+/* MOVE mode glow: obvious when clickable (drag/buttons work). */
+.rb-interactive {
+  outline: 2px solid oklch(0.55 0.21 262 / 0.55);
+  outline-offset: -2px;
+}
+
 .rb-body {
   background: oklch(1 0 0 / 0.75);
   color: var(--color-body);

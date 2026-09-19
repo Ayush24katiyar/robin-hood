@@ -9,7 +9,10 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "electron:dev": "electron ./electron/main.cjs",
+    "electron:build": "electron-builder -c electron-builder.yml"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -33,6 +36,8 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
@@ -43,6 +48,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "8.1.5"
+    "vite": "8.1.5",
+    "vitest": "^5.0.1"
   }
 }

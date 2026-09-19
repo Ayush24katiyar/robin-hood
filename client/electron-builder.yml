@@ -1,0 +1,28 @@
+# RB Assistant — electron-builder config (final installer/portable decided later).
+# Sidecar pattern inspired by cheating-daddy extraResource binary (rationale only).
+appId: com.rb.assistant
+productName: RB Assistant
+directories:
+  output: release
+files:
+  - .output/public/**
+  - electron/**
+  # NOTE: TanStack Start nitro SSR output (.output/) is interim for dev packaging —
+  # prod must switch to static SPA dist/ for file://. Keep Start for web dev only.
+extraResources:
+  - from: ../dist-sidecar/
+    to: sidecar/
+    filter:
+      - rb-server.exe
+win:
+  target:
+    # Final step: pick nsis (installer) vs portable. Both work from same build.
+    - nsis
+    - portable
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+portable:
+  artifactName: RB-Assistant-portable.exe

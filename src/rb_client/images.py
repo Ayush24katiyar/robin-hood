@@ -6,6 +6,8 @@ from PIL import Image
 
 MAX_IMAGE_BYTES = 15 * 1024 * 1024
 MAX_IMAGE_SIDE = 2000
+# Decompression-bomb guard: crafted <15MB PNG can decode to 100+ MP. Reject before to_rgb allocates.
+MAX_IMAGE_PIXELS = 50_000_000
 ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/bmp", "image/gif"}
 
 WHITE_BACKGROUND = (255, 255, 255, 255)
@@ -35,6 +37,12 @@ async def read_image(file: UploadFile) -> bytes:
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Uploaded file is not a valid image.") from exc
 
+    # Pixel-cap before to_rgb allocates a huge buffer (decompression bomb).
+    # Mirrors the guard in encode_png_bytes_to_data_url(); without this, the
+    # /analyze path (load_image -> read_image) allocates before encode ever runs.
+    if (image.width or 0) * (image.height or 0) > MAX_IMAGE_PIXELS:
+        raise HTTPException(status_code=400, detail="Image has too many pixels (max 50 MP).")
+
     rgb_image = to_rgb(image)
 
     buffer = io.BytesIO()
@@ -44,12 +52,22 @@ async def read_image(file: UploadFile) -> bytes:
 
 async def load_image(file: UploadFile) -> tuple[str, str]:
     png = await read_image(file)
-    image = Image.open(io.BytesIO(png))
+    return encode_png_bytes_to_data_url(png)
 
-    if max(image.size) > MAX_IMAGE_SIDE:
-        image.thumbnail((MAX_IMAGE_SIDE, MAX_IMAGE_SIDE))
 
+def encode_png_bytes_to_data_url(png: bytes) -> tuple[str, str]:
+    """Normalize raw PNG bytes (downscale + RGB + base64) shared by /analyze paths."""
+    try:
+        image = Image.open(io.BytesIO(png))
+        image.load()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Uploaded file is not a valid image.") from exc
+    # Pixel-cap before to_rgb allocates huge buffer (decompression bomb).
+    if (image.width or 0) * (image.height or 0) > MAX_IMAGE_PIXELS:
+        raise HTTPException(status_code=400, detail="Image has too many pixels (max 50 MP).")
+    rgb = to_rgb(image)
+    if max(rgb.size) > MAX_IMAGE_SIDE:
+        rgb.thumbnail((MAX_IMAGE_SIDE, MAX_IMAGE_SIDE))
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-    return "image/png", encoded
+    rgb.save(buffer, format="PNG")
+    return "image/png", base64.b64encode(buffer.getvalue()).decode("ascii")

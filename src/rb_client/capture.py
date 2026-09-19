@@ -1,14 +1,13 @@
-import io
 import os
 import threading
 import time
 from pathlib import Path
 
 import httpx
-import mss
 from dotenv import load_dotenv
 from pynput import keyboard
-from PIL import Image
+
+from rb_client.screen import capture_screenshot
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
@@ -18,16 +17,6 @@ COOLDOWN_SECONDS = float(os.getenv("COOLDOWN_SECONDS", "2"))
 
 _lock = threading.Lock()
 _last_trigger = 0.0
-
-
-def capture_screenshot() -> bytes:
-    with mss.mss() as sct:
-        monitor = sct.monitors[0]
-        frame = sct.grab(monitor)
-        image = Image.frombytes("RGB", frame.size, frame.bgra, "raw", "BGRX")
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    return buffer.getvalue()
 
 
 def post_image(path: str) -> None:
@@ -42,7 +31,12 @@ def post_image(path: str) -> None:
     print(separator)
 
     try:
-        response = httpx.post(f"{BACKEND_URL}{path}", files={"image": ("capture.png", data, "image/png")}, timeout=180.0)
+        response = httpx.post(
+            f"{BACKEND_URL}{path}",
+            files={"image": ("capture.png", data, "image/png")},
+            headers={"X-RB-Client": "hotkey"},  # anti-CSRF guard (see app.py)
+            timeout=180.0,
+        )
     except httpx.ConnectError:
         print("[ERROR] Could not reach the backend. Is it running on", BACKEND_URL, "?")
         print(separator)
