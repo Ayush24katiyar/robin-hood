@@ -74,6 +74,7 @@ def test_normalize_answer_variants() -> None:
     assert normalize_answer("NO_QUESTION.") == "NO_QUESTION"
     assert normalize_answer("  NO_QUESTION\nmore") == "NO_QUESTION"
     assert normalize_answer("Answer: 42") == "Answer: 42"
+    assert normalize_answer("   ") == ""
 
 
 def test_analyze_missing_header_403(monkeypatch) -> None:

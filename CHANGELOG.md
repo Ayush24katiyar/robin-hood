@@ -3,6 +3,23 @@
 This file tracks every functional change, so devs know what changed, why, and how it was verified.
 Format: newest entry on top. Each entry lists files, behavior, tests, and next step.
 
+## 2026-09-19 — Batch 2 leftovers: main cooldown, env crash, web chrome, meta cleanup
+
+### Changed
+- `electron/capture.cjs`: `shouldCapture(last, now, 2s)` quota-burn guard (unit-tested).
+- `electron/main.cjs`: `handleCapture` enforces 2s cooldown (globalShortcut bypassed UI/Python).
+- `src/rb_client/capture.py`: `_cooldown_seconds()` try/except → 2.0 (garbage env no longer crashes import).
+- `src/rb_client/openrouter.py`: `normalize_answer("   ")` → `""`.
+- `RBAssistantWindow.tsx`: web fallback chrome (minimize/compact collapse, hide collapses;
+  titles note desktop-only); collapsed hides main+footer.
+- `routes/__root.tsx`: Lovable meta → RB Assistant (title/desc/author/og/twitter).
+- Tests: `capture.test.cjs` shouldCapture, `test_capture_env.py` garbage env,
+  normalize whitespace assert. `IMPLEMENTATION_NOTES.md` flaw log updated below.
+
+### Verified (mocked, zero quota)
+- `node --check` 4 ok; `node --test` 6 passed; `pytest` 36 passed; `mypy` clean;
+  `tsc` clean; `lint` clean; `vitest` 7 passed; `build` ok.
+
 ## 2026-09-19 — True transparent overlay (no glass, floating text only)
 
 ### Why (your table)

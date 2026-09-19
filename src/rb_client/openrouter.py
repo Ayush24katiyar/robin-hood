@@ -37,7 +37,8 @@ def normalize_answer(text: str) -> str:
     """Collapse model variants (NO_QUESTION. / newline / 'Answer: NO_QUESTION') to sentinel."""
     if _NO_QUESTION_RE.match(text):
         return NO_QUESTION
-    return text.strip() or text
+    stripped = text.strip()
+    return stripped if stripped else ""
 
 
 def _request_format(body: dict) -> dict:

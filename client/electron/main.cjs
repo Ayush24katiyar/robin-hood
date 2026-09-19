@@ -33,7 +33,7 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 // Testable seams (Batch 1 extraction): capture/sidecar logic unit-tested via
 // node --test without booting Electron. main.cjs stays thin wiring only.
-const { grabScreenPNG: grabPNG, postAnalyze: postPNG } = require("./capture.cjs");
+const { grabScreenPNG: grabPNG, postAnalyze: postPNG, shouldCapture } = require("./capture.cjs");
 const { resolveExePath, pollBackend } = require("./sidecar.cjs");
 
 let win = null;
@@ -43,6 +43,9 @@ let clickThrough = true;
 let dragTimer = null; // stored (not fire-and-forget) so Esc cancels immediately
 let compactMode = false;
 let lastBounds = null;
+// Quota-burn guard: globalShortcut bypasses renderer/Python 2s throttles.
+const CAPTURE_COOLDOWN_MS = 2000;
+let lastCaptureMs = 0;
 
 const BACKEND_PORT = process.env.RB_BACKEND_PORT || "8000";
 const BACKEND_URL = `http://127.0.0.1:${BACKEND_PORT}`;
@@ -191,6 +194,10 @@ function clearDragTimer() {
 }
 
 async function handleCapture() {
+  // Cooldown mirrors renderer/Python 2s — rapid Shift+Space would burn quota.
+  const now = Date.now();
+  if (!shouldCapture(lastCaptureMs, now, CAPTURE_COOLDOWN_MS)) return;
+  lastCaptureMs = now;
   try {
     win.webContents.send("rb:status", { status: "capturing" });
     const png = await grabScreenPNG();

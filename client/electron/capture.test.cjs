@@ -69,3 +69,12 @@ describe("pollBackend", () => {
     assert.match(resolveExePath({ dirname: "/a", platform: "linux" }), /rb-server$/);
   });
 });
+
+describe("shouldCapture", () => {
+  const { shouldCapture } = require("./capture.cjs");
+  it("throttles rapid triggers (2s quota guard)", () => {
+    assert.equal(shouldCapture(0, 500, 2000), false);
+    assert.equal(shouldCapture(0, 2000, 2000), true);
+    assert.equal(shouldCapture(0, 2500, 2000), true);
+  });
+});

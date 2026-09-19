@@ -13,7 +13,17 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 VISION_HOTKEY = os.getenv("VISION_HOTKEY", "<shift>+<space>")
-COOLDOWN_SECONDS = float(os.getenv("COOLDOWN_SECONDS", "2"))
+
+
+def _cooldown_seconds() -> float:
+    """Garbage env (e.g. COOLDOWN_SECONDS=abc) must not crash client at import."""
+    try:
+        return float(os.getenv("COOLDOWN_SECONDS", "2"))
+    except (TypeError, ValueError):
+        return 2.0
+
+
+COOLDOWN_SECONDS = _cooldown_seconds()
 
 _lock = threading.Lock()
 _last_trigger = 0.0

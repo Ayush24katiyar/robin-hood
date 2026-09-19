@@ -36,6 +36,7 @@ export function RBAssistantWindow() {
   const [copyLabel, setCopyLabel] = useState("Copy Answer");
   const [dragMode, setDragMode] = useState(false); // Electron Ctrl+Shift+Space selector
   const [inElectron, setInElectron] = useState(false);
+  const [collapsed, setCollapsed] = useState(false); // web fallback for minimize (no native window)
   const [interactive, setInteractive] = useState(false); // MOVE clickable vs VIEW click-through
   const abortRef = useRef<AbortController | null>(null);
   const lastCaptureRef = useRef(0);
@@ -328,9 +329,12 @@ export function RBAssistantWindow() {
         <div className="flex shrink-0 items-center space-x-1 text-muted-foreground">
           <button
             type="button"
-            title="Minimize to tray"
+            title={hasBridge() ? "Minimize to tray" : "Collapse answer (web fallback)"}
             className="rb-chrome-btn"
-            onClick={() => void window.rb?.minimize()}
+            onClick={() => {
+              if (hasBridge()) void window.rb?.minimize();
+              else setCollapsed((c) => !c);
+            }}
           >
             <svg
               className="h-3.5 w-3.5"
@@ -347,7 +351,10 @@ export function RBAssistantWindow() {
             type="button"
             title="Compact ↔ full (native maximize would cover lecture)"
             className="rb-chrome-btn"
-            onClick={() => void window.rb?.toggleCompact()}
+            onClick={() => {
+              if (hasBridge()) void window.rb?.toggleCompact();
+              else applyPresetWithSync(preset === "L" ? "M" : "L");
+            }}
           >
             <svg
               className="h-3 w-3"
@@ -361,9 +368,12 @@ export function RBAssistantWindow() {
           </button>
           <button
             type="button"
-            title="Hide (tray Quit stops app)"
+            title={hasBridge() ? "Hide (tray Quit stops app)" : "Hide works in desktop app"}
             className="rb-chrome-btn rb-chrome-btn-danger"
-            onClick={() => void window.rb?.hide()}
+            onClick={() => {
+              if (hasBridge()) void window.rb?.hide();
+              else setCollapsed(true);
+            }}
           >
             <svg
               className="h-3.5 w-3.5"
@@ -381,112 +391,116 @@ export function RBAssistantWindow() {
       </header>
 
       {/* Answer region: aria-live so screen readers + devs see updates. */}
-      <main
-        aria-live="polite"
-        className={`rb-body flex-1 space-y-5 overflow-y-auto text-[13.5px] leading-relaxed ${padding}`}
-      >
-        <div className="space-y-2">
-          <h1
-            className={`rb-answer-title font-bold tracking-tight ${titleSize}`}
-            style={{ letterSpacing: "-0.015em" }}
-          >
-            {capturing ? "Analyzing screen…" : status === "error" ? "Capture failed" : "Answer"}
-          </h1>
-          {status === "error" ? (
-            <p className="rb-answer-text text-[13.5px] leading-relaxed">{errorMsg}</p>
-          ) : (
-            <p className="rb-answer-text text-[13.5px] leading-relaxed whitespace-pre-wrap">
-              {answer}
-            </p>
-          )}
-        </div>
-      </main>
-
-      <footer className="rb-footer relative flex shrink-0 select-none items-center justify-between px-4 py-3 sm:px-6">
-        <div className="flex items-center space-x-2">
-          <div className="rb-kbd hidden items-center space-x-1 rounded px-2 py-0.5 font-mono text-[11px] font-medium xs:flex">
-            <kbd className="font-semibold text-foreground">Shift</kbd>
-            <span className="text-muted-foreground">+</span>
-            <kbd className="font-semibold text-foreground">Space</kbd>
-          </div>
-          <span className="text-[12px] font-medium text-muted-foreground">
-            {Math.round(size.width)} × {Math.round(size.height)}px
-          </span>
-          {captureMeta && (
-            <span className="text-[11px] font-medium text-success-foreground">{captureMeta}</span>
-          )}
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={() => void copyAnswer()}
-            disabled={status !== "ready"}
-            aria-disabled={status !== "ready"}
-            className="rb-action disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <svg
-              className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-            >
-              <rect height="13" rx="2" ry="2" width="13" x="9" y="9" />
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-            </svg>
-            <span>{copyLabel}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleCapture()}
-            disabled={capturing}
-            aria-disabled={capturing}
-            className="rb-action rb-action-primary disabled:cursor-wait disabled:opacity-70"
-          >
-            <svg
-              className="h-3.5 w-3.5 shrink-0 text-accent"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              viewBox="0 0 24 24"
-            >
-              <circle cx="12" cy="12" r="9" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-            <span>{captureLabel}</span>
-          </button>
-        </div>
-
-        <div
-          title="Drag to resize freely"
-          className="rb-grip absolute bottom-0 right-0 flex h-5 w-5 items-end justify-end p-1 text-muted-foreground"
-          onPointerDown={(e) => {
-            setAnimate(false);
-            resizing.current = {
-              x: e.clientX,
-              y: e.clientY,
-              w: size.width,
-              h: size.height,
-            };
-            e.currentTarget.setPointerCapture(e.pointerId);
-            document.body.style.cursor = "nwse-resize";
-          }}
+      {!collapsed && (
+        <main
+          aria-live="polite"
+          className={`rb-body flex-1 space-y-5 overflow-y-auto text-[13.5px] leading-relaxed ${padding}`}
         >
-          <svg
-            className="pointer-events-none h-3.5 w-3.5 opacity-60"
-            fill="currentColor"
-            viewBox="0 0 16 16"
+          <div className="space-y-2">
+            <h1
+              className={`rb-answer-title font-bold tracking-tight ${titleSize}`}
+              style={{ letterSpacing: "-0.015em" }}
+            >
+              {capturing ? "Analyzing screen…" : status === "error" ? "Capture failed" : "Answer"}
+            </h1>
+            {status === "error" ? (
+              <p className="rb-answer-text text-[13.5px] leading-relaxed">{errorMsg}</p>
+            ) : (
+              <p className="rb-answer-text text-[13.5px] leading-relaxed whitespace-pre-wrap">
+                {answer}
+              </p>
+            )}
+          </div>
+        </main>
+      )}
+
+      {!collapsed && (
+        <footer className="rb-footer relative flex shrink-0 select-none items-center justify-between px-4 py-3 sm:px-6">
+          <div className="flex items-center space-x-2">
+            <div className="rb-kbd hidden items-center space-x-1 rounded px-2 py-0.5 font-mono text-[11px] font-medium xs:flex">
+              <kbd className="font-semibold text-foreground">Shift</kbd>
+              <span className="text-muted-foreground">+</span>
+              <kbd className="font-semibold text-foreground">Space</kbd>
+            </div>
+            <span className="text-[12px] font-medium text-muted-foreground">
+              {Math.round(size.width)} × {Math.round(size.height)}px
+            </span>
+            {captureMeta && (
+              <span className="text-[11px] font-medium text-success-foreground">{captureMeta}</span>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => void copyAnswer()}
+              disabled={status !== "ready"}
+              aria-disabled={status !== "ready"}
+              className="rb-action disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg
+                className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <rect height="13" rx="2" ry="2" width="13" x="9" y="9" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              <span>{copyLabel}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleCapture()}
+              disabled={capturing}
+              aria-disabled={capturing}
+              className="rb-action rb-action-primary disabled:cursor-wait disabled:opacity-70"
+            >
+              <svg
+                className="h-3.5 w-3.5 shrink-0 text-accent"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                viewBox="0 0 24 24"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+              <span>{captureLabel}</span>
+            </button>
+          </div>
+
+          <div
+            title="Drag to resize freely"
+            className="rb-grip absolute bottom-0 right-0 flex h-5 w-5 items-end justify-end p-1 text-muted-foreground"
+            onPointerDown={(e) => {
+              setAnimate(false);
+              resizing.current = {
+                x: e.clientX,
+                y: e.clientY,
+                w: size.width,
+                h: size.height,
+              };
+              e.currentTarget.setPointerCapture(e.pointerId);
+              document.body.style.cursor = "nwse-resize";
+            }}
           >
-            <circle cx="14" cy="14" r="1.3" />
-            <circle cx="10" cy="14" r="1.3" />
-            <circle cx="14" cy="10" r="1.3" />
-            <circle cx="6" cy="14" r="1.3" />
-            <circle cx="10" cy="10" r="1.3" />
-            <circle cx="14" cy="6" r="1.3" />
-          </svg>
-        </div>
-      </footer>
+            <svg
+              className="pointer-events-none h-3.5 w-3.5 opacity-60"
+              fill="currentColor"
+              viewBox="0 0 16 16"
+            >
+              <circle cx="14" cy="14" r="1.3" />
+              <circle cx="10" cy="14" r="1.3" />
+              <circle cx="14" cy="10" r="1.3" />
+              <circle cx="6" cy="14" r="1.3" />
+              <circle cx="10" cy="10" r="1.3" />
+              <circle cx="14" cy="6" r="1.3" />
+            </svg>
+          </div>
+        </footer>
+      )}
       {dragMode && (
         <DragSelector
           onCancel={() => {

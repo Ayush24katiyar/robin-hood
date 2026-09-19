@@ -9,6 +9,8 @@
  *   Multi-monitor dropped per decision: takes sources[0], sized to primary.
  * - postAnalyze({fetchFn, backendURL, clientTag}, pngBuffer): multipart POST to
  *   /analyze with X-RB-Client header (CSRF guard, Batch 1 High 3).
+ * - shouldCapture(lastMs, nowMs, cooldownMs): quota-burn guard — globalShortcut
+ *   bypasses renderer/Python 2s throttles, so main enforces its own cooldown.
  */
 
 async function sleep(ms) {
@@ -59,4 +61,9 @@ async function postAnalyze(deps, pngBuffer, opts = {}) {
   }
 }
 
-module.exports = { grabScreenPNG, postAnalyze };
+module.exports = { grabScreenPNG, postAnalyze, shouldCapture };
+
+/** Quota-burn guard: ignore triggers inside cooldown window (mirrors 2s UI/Python). */
+function shouldCapture(lastMs, nowMs, cooldownMs = 2000) {
+  return nowMs - lastMs >= cooldownMs;
+}
